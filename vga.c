@@ -28,16 +28,45 @@ void vga_update_cursor_xy(int x, int y)
 	vga_update_cursor(y * VGA.width + x);
 }
 
-void vga_clear()
+
+void vga_wipe()
 {
     for (uint16_t ofs = 0; ofs < VGA.width * VGA.height; ofs++) {
         VGA.vidmem[ofs] = (0x07 << 8) | ' ';
     }
+}
+
+void vga_clear()
+{
+    vga_wipe();
     vga_update_cursor(0);
+    VGA.current_loc = 0;
+}
+
+void vga_nl()
+{
+    VGA.current_loc += VGA.width - VGA.current_loc % VGA.width;
+    vga_update_cursor(VGA.current_loc);
+}
+
+void vga_puts(const char *s)
+{
+    while (*s) {
+        if (*s == '\n') vga_nl();
+        else VGA.vidmem[VGA.current_loc++] = (0x07 << 8) | *s;
+        s++;
+    }
+    vga_update_cursor(VGA.current_loc);
+}
+
+void vga_puts_nl(const char *s)
+{
+    vga_puts(s); vga_nl();
 }
 
 void vga_init()
 {
     vga_clear();
+    vga_puts_nl("minimal kernel with text-mode VGA");
 }
 

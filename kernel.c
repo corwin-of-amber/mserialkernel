@@ -2,33 +2,23 @@
 * Copyright (C) 2014  Arjun Sreedharan
 * License: GPL version 2 or higher http://www.gnu.org/licenses/gpl.html
 */
-// #include "keyboard_map.h"
 #include <stdint.h>
 
-/* there are 25 lines each of 80 columns; each element takes 2 bytes */
-#define LINES 25
-#define COLUMNS_IN_LINE 80
-#define BYTES_FOR_EACH_ELEMENT 2
-#define SCREENSIZE BYTES_FOR_EACH_ELEMENT * COLUMNS_IN_LINE * LINES
-
-#define IDT_SIZE 256
-#define INTERRUPT_GATE 0x8e
-#define KERNEL_CODE_SEGMENT_SEL 0x08
-
-#define ENTER_KEY_CODE 0x1C
-
-//extern unsigned char keyboard_map[128];
-//extern void keyboard_handler(void);
 extern char inb(unsigned short port);
 extern void outb(unsigned short port, unsigned char data);
 extern void load_idt(unsigned long *idt_ptr);
 
 extern void serial_handler(void);
 
-/* current cursor location */
-unsigned int current_loc = 0;
-/* video memory begins at address 0xb8000 */
-char *vidptr = (char*)0xb8000;
+void vga_puts(const char *s);
+void vga_puts_nl(const char *s);
+
+
+/* ---  Interrupt Table (IDT) --- */
+
+#define IDT_SIZE 256
+#define INTERRUPT_GATE 0x8e
+#define KERNEL_CODE_SEGMENT_SEL 0x08
 
 struct IDT_entry {
 	unsigned short int offset_lowerbits;
@@ -160,13 +150,13 @@ void serial_handler_main(void)
     static char buf[256];
     static unsigned int offset = 0;
 
-    if ((inb(PORT1 + 2) // IIR - Interrupt Identification Register
-            & 0x01) == 0)     //  bit 0 - interrupt pending (active low)
+    if ((inb(PORT1 + 2)        // IIR - Interrupt Identification Register
+            & 0x01) == 0)      //  bit 0 - interrupt pending (active low)
     { 
         char c;
     
         while (inb(PORT1 + 5)  // LSR - Line Status Register
-                    & 0x01)          //  bit 0 - data available
+                    & 0x01)    //  bit 0 - data available
         {
             c = inb(PORT1);
             if (c == '\r') c = '\n';
@@ -174,6 +164,11 @@ void serial_handler_main(void)
 
             /* Store in buffer (unless full), clear buffer on Enter */
             if (c == '\n') {
+                if (offset < sizeof(buf)) {
+                    buf[offset] = 0;
+                    vga_puts("> ");
+                    vga_puts_nl(buf);
+                }
                 for (unsigned int i = 0; i < offset; i++)
                     outb(PORT1, '-');
                 outb(PORT1, '\n');
