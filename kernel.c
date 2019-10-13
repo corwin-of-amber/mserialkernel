@@ -8,7 +8,7 @@ extern char inb(unsigned short port);
 extern void outb(unsigned short port, unsigned char data);
 extern void load_idt(unsigned long *idt_ptr);
 
-extern void serial_handler(void);
+extern void serial_isr(void);
 
 void vga_puts(const char *s);
 void vga_puts_nl(const char *s);
@@ -112,7 +112,7 @@ void serial_init(void)
 {
     outb(PORT1 + 1 , 0); /* Turn off interrupts - Port1 */
 
-    idt_set_irq(PORT1_IRQ, serial_handler);
+    idt_set_irq(PORT1_IRQ, serial_isr);
     pic_enable(PORT1_IRQ);
 
 #if 0
@@ -136,13 +136,17 @@ void serial_init(void)
     outb(PORT1 + 1 , 0x01); /* Enable interrupt when data received */
 }
 
+asm( "serial_isr: \n"
+     "call    serial_handler\n"
+     "iretl");
+
 void serial_puts(const char *s) {
     while (*s) {
         outb(PORT1, *s++);
     }
 }
 
-void serial_handler_main(void)
+void serial_handler(void)
 {
     /* write EOI */
 	outb(0x20, 0x20);
@@ -180,6 +184,7 @@ void serial_handler_main(void)
         }
     }
 }
+
 
 /* ---------------------- */
 

@@ -22,7 +22,7 @@ extern serial_handler_main
 
 inb:
 	mov edx, [esp + 4]
-			;al is the lower 8 bits of eax
+	            ;al is the lower 8 bits of eax
 	in al, dx	;dx is the lower 16 bits of edx
 	ret
 
@@ -37,14 +37,6 @@ load_idt:
 	lidt [edx]
 	sti 				;turn on interrupts
 	ret
-
-;keyboard_handler:                 
-;	call    keyboard_handler_main
-;	iretd
-
-serial_handler:
-    call    serial_handler_main
-    iretd
 
 start:
 	cli 				;block interrupts
